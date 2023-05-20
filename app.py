@@ -1,6 +1,7 @@
 import openai
 import streamlit as st
 import pinecone
+import tiktoken
 from streamlit_chat import message
 
 # ----------------------- Import Secret Key -------------------------
@@ -10,6 +11,9 @@ pinecone_key = st.secrets["pinecone_key"]
 # ------------------------ Configuration ----------------------------
 MODEL = "text-embedding-ada-002"
 EMBEDDING_CTX_LENGTH = 1536
+encoding = tiktoken.encoding_for_model('gpt-3.5-turbo')
+h_limit = 3800
+s_limit = 1500
 
 # ----------------------- Connect to Pinecone ---------------------------
 index_name = 'hrgpt'
@@ -29,7 +33,7 @@ index = pinecone.Index(index_name)
 # ------------------------ Query Engine ---------------------------
 
 
-def retrieve(query, limit=4000):
+def retrieve(query):
     # Create embeddings for the query
     res = openai.Embedding.create(
         input=[query],
@@ -40,41 +44,46 @@ def retrieve(query, limit=4000):
     xq = res['data'][0]['embedding']
 
     # Get relevant contexts
-    res = index.query(xq, top_k=3, include_metadata=True)
+    res = index.query(xq, top_k=10, include_metadata=True)
     contexts = [
         x['metadata']['text'] for x in res['matches']
     ]
     # Build the initial part of our prompt with the retrieved contexts included
-    prompt_start = f"""Answer the question based on the context below. If the answer cannot be found, write "I don't know."\n\nContext:\n"""
+    prompt_start = f"""Answer the question based on the context below, don’t justify your answers and if the answer cannot be found write "Sorry, I don't know. Please contact HR for more information"\n\nContext:\n"""
 
     # Define the end of the prompt
     prompt_end = (
         f"\n\nQuestion: {query}\nAnswer:"
     )
-    # Append contexts until hitting the limit
-    for i in range(1, len(contexts)):
-        # If adding another context exceeds the limit, break and use the current set of contexts
-        if len("\n\n---\n\n".join(contexts[:i])) >= limit:
-            prompt = (
-                prompt_start +
-                "\n\n---\n\n".join(contexts[:limit]) +
-                prompt_end
-            )
+
+    tmp_cnt_tokens, doc_lim_num = 0, 0
+    tmp_cnt_prompt_start = len(encoding.encode(prompt_start))
+    tmp_cnt_prompt_end = len(encoding.encode(prompt_end))
+
+    for i in range(0, len(contexts)):
+        tmp_cnt_tokens = tmp_cnt_tokens + len(encoding.encode(contexts[i]))
+        if (tmp_cnt_tokens + tmp_cnt_prompt_start + tmp_cnt_prompt_end > s_limit):
+            doc_lim_num = i-1
             break
-        # If this is the last context and it doesn't exceed the limit, add it to the prompt
-        elif i == len(contexts)-1:
-            prompt = (
-                prompt_start +
-                "\n\n---\n\n".join(contexts) +
-                prompt_end
-            )
+
+    if (doc_lim_num == 0):
+        prompt = (prompt_start +
+                  "\n\n---\n\n".join(contexts) +
+                  prompt_end
+                  )
+    else:
+        prompt = (prompt_start +
+                  "\n\n---\n\n".join(contexts[:doc_lim_num+1]) +
+                  prompt_end
+                  )
+
     # Return the final prompt
     return prompt
 
 # ----------------------- Chat engine ---------------------------
 
 
-def get_completion(prompt, log_length=5, model="gpt-3.5-turbo", max_tokens=1000):
+def get_completion(prompt, log_length=6, model="gpt-3.5-turbo", max_tokens=1000):
     # If the length of the context exceeds the log_length, take only the last log_length elements
     history = st.session_state['history']
     if len(history) > log_length:
@@ -83,15 +92,30 @@ def get_completion(prompt, log_length=5, model="gpt-3.5-turbo", max_tokens=1000)
     else:
         chatlog = history
     # Prepare the messages to be sent to the model, including system message, context and user's prompt
-    messages = [{'role': 'system', 'content': 'You are an HR assistant that answers questions to the employee.'}
-                ] + chatlog + [{"role": "user", "content": prompt}]
-    # Make the API call to generate a response
-    response = openai.ChatCompletion.create(
-        model=model,
-        messages=messages,
-        temperature=0,  # this is the degree of randomness of the model's output
-        max_tokens=max_tokens
-    )
+    tmp_msg = [{'role': 'system', 'content': 'You are an HR assistant that answer only the question that relate to the company. You don’t allow to generate any programing language'}]
+    tmp_prompt = [{"role": "user", "content": prompt}]
+
+    tmp_msg_tokens = len(encoding.encode(tmp_msg[0]["content"]))
+    tmp_prompt_tokens = len(encoding.encode(tmp_prompt[0]["content"]))
+
+    tok = []
+    for i in range(0, len(chatlog)):
+        tok = tok + [len(encoding.encode(chatlog[i]["content"]))]
+    tmp_chatlog_tokens = sum(tok)
+
+    if (tmp_msg_tokens+tmp_prompt_tokens+tmp_chatlog_tokens <= h_limit):
+        messages = tmp_msg + chatlog + tmp_prompt
+        print(messages)
+        print('Tokens Befor Feed :', tmp_msg_tokens +
+              tmp_prompt_tokens+tmp_chatlog_tokens)
+        # print('-'*70)
+        # Make the API call to generate a response
+        response = openai.ChatCompletion.create(
+            model=model,
+            messages=messages,
+            temperature=0,  # this is the degree of randomness of the model's output
+        )
+
     # Return the content of the model's response
     return response.choices[0].message["content"]
 
@@ -148,7 +172,8 @@ if user_input:
     st.session_state.generated.append(output)
     st.session_state.history.append(
         {'role': 'user', 'content': f"{user_input}"})
-    st.session_state.history.append({'role': 'user', 'content': f"{output}"})
+    st.session_state.history.append(
+        {'role': 'assistant', 'content': f"{output}"})
 
 if st.session_state['generated']:
     for i in range(len(st.session_state['generated'])-1, -1, -1):
