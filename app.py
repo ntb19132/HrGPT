@@ -74,7 +74,7 @@ def retrieve(query, limit=4000):
 # ----------------------- Chat engine ---------------------------
 
 
-def get_completion(prompt, log_length=5, model="gpt-3.5-turbo", max_tokens=100):
+def get_completion(prompt, log_length=5, model="gpt-3.5-turbo", max_tokens=1000):
     # If the length of the context exceeds the log_length, take only the last log_length elements
     history = st.session_state['history']
     if len(history) > log_length:
