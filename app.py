@@ -53,7 +53,7 @@ async def main():
     if st.session_state['generated']:
         for i, (generated, past) in enumerate(zip(reversed(st.session_state['generated']),
                                                   reversed(st.session_state['past']))):
-            message(generated, key=str(), avatar_style='bottts')
+            message(generated, key=str(i), avatar_style='bottts')
             message(past, is_user=True, key=str(i) + '_user', avatar_style="big-smile")
 
     message("Hello! How can I assist you today?", key='init_msg', avatar_style='bottts')
