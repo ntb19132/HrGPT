@@ -3,3 +3,6 @@ streamlit
 streamlit-chat
 pinecone-client
 tiktoken
+universal_pathlib
+s3fs
+uuid

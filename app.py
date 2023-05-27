@@ -1,27 +1,43 @@
 import asyncio
 import time
 
-import openai
 import streamlit as st
-import pinecone
-import tiktoken
 from streamlit_chat import message
 
-from promp_generator import PromptGenerator
-from services.openai import OpenAiApiService
+from promp_generator import PromptGenerator, count_tokens
+from services.obs import write_log
+from services.openai import get_completion
+from utils import get_session_id
 
 
-def generate_response(question, chat_logs):
+async def generate_response(question, chat_logs):
+    user_timestamp = int(time.time())
     prompt_gen = PromptGenerator()
-    prompt = prompt_gen.retrieve(question)
-    prompt = prompt_gen.with_chatlogs(prompt, chat_logs)
-    response = OpenAiApiService().get_completion(prompt)
-    return response.choices[0].message['content']
+    docs = prompt_gen.retrieve(question)
+    prompt = prompt_gen.get_prompt(question, docs, chat_logs)
+    response = get_completion(prompt)
+    generated_content = response.choices[0].message['content']
+    # write session_id, created, role , content, docs
+    session_id = get_session_id()
+    # session_id = 'asda'
+    usage = response.usage.to_dict()
+    usage['embedding_token'] = count_tokens(question)
+    doc_ids = [d['id'] for d in docs]
+    user_log = {'session_id': session_id, 'timestamp': user_timestamp, 'role': 'user', 'content': question,
+                'docs': doc_ids, 'usage': usage}
+    write_log(user_log, len(chat_logs))
+    assistant_log = {'session_id': session_id, 'timestamp': response['created'], 'role': 'assistant', 'content': generated_content}
+    write_log(assistant_log, len(chat_logs)+1)
+    st.session_state.past.append(st.session_state.input_text)
+    st.session_state.generated.append(generated_content)
+    st.session_state.chatlogs.append({'role': 'user', 'content': f"{st.session_state.input_text}"})
+    st.session_state.chatlogs.append({'role': 'assistant', 'content': f"{generated_content}"})
+    # return generated_content
 
 
 # ----------------------- Frontend ---------------------------
 # Creating the chatbot interface
-async def main():
+def main():
     st.title("HrGPT : Your HR Assistant")
     st.subheader("Your can ask any information that relate to Sirius")
     # Storing the chat
@@ -31,8 +47,8 @@ async def main():
     if 'past' not in st.session_state:
         st.session_state['past'] = []
 
-    if 'history' not in st.session_state:
-        st.session_state['history'] = []
+    if 'chatlogs' not in st.session_state:
+        st.session_state['chatlogs'] = []
 
     if 'input_text' not in st.session_state:
         st.session_state.input_text = 'Hello!'
@@ -40,12 +56,8 @@ async def main():
     def submit():
         st.session_state.input_text = st.session_state.input
         st.session_state.input = ''
-        output = generate_response(st.session_state.input_text, st.session_state['history'])
+        asyncio.run(generate_response(st.session_state.input_text, st.session_state['chatlogs']))
         # store the output
-        st.session_state.past.append(st.session_state.input_text)
-        st.session_state.generated.append(output)
-        st.session_state.history.append({'role': 'user', 'content': f"{st.session_state.input_text}"})
-        st.session_state.history.append({'role': 'assistant', 'content': f"{output}"})
 
     st.text_input(
         "Your Message", '', key="input", on_change=submit)
@@ -59,6 +71,6 @@ async def main():
     message("Hello! How can I assist you today?", key='init_msg', avatar_style='bottts')
     message("Hello!", is_user=True, key='init_msg_user', avatar_style="big-smile")
 
+
 if __name__ == "__main__":
-    start_time = time.time()
-    asyncio.run(main())
+    main()
