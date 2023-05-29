@@ -2,7 +2,7 @@ import asyncio
 import time
 
 import streamlit as st
-from streamlit_chat import message
+from components.streamlit_chat import message
 
 from promp_generator import PromptGenerator, count_tokens
 from services.obs import write_log
@@ -26,12 +26,13 @@ async def generate_response(question, chat_logs):
     user_log = {'session_id': session_id, 'timestamp': user_timestamp, 'role': 'user', 'content': question,
                 'docs': doc_ids, 'usage': usage}
     write_log(user_log, len(chat_logs))
-    assistant_log = {'session_id': session_id, 'timestamp': response['created'], 'role': 'assistant', 'content': generated_content}
-    write_log(assistant_log, len(chat_logs)+1)
-    st.session_state.past.append(st.session_state.input_text)
-    st.session_state.generated.append(generated_content)
-    st.session_state.chatlogs.append({'role': 'user', 'content': f"{st.session_state.input_text}"})
-    st.session_state.chatlogs.append({'role': 'assistant', 'content': f"{generated_content}"})
+    assistant_log = {'session_id': session_id, 'timestamp': response['created'], 'role': 'assistant',
+                     'content': generated_content, 'feed_back': None}
+    write_log(assistant_log, len(chat_logs) + 1)
+    # st.session_state.past.append(st.session_state.input_text)
+    # st.session_state.generated.append(generated_content)
+    st.session_state.chatlogs.append(user_log)
+    st.session_state.chatlogs.append(assistant_log)
     # return generated_content
 
 
@@ -56,17 +57,21 @@ def main():
     def submit():
         st.session_state.input_text = st.session_state.input
         st.session_state.input = ''
-        asyncio.run(generate_response(st.session_state.input_text, st.session_state['chatlogs']))
+        chatlogs = [{'role': log['role'], 'content': log['content']} for log in st.session_state['chatlogs']]
+        asyncio.run(generate_response(st.session_state.input_text, chatlogs))
         # store the output
 
     st.text_input(
         "Your Message", '', key="input", on_change=submit)
 
-    if st.session_state['generated']:
-        for i, (generated, past) in enumerate(zip(reversed(st.session_state['generated']),
-                                                  reversed(st.session_state['past']))):
-            message(generated, key=str(i), avatar_style='bottts')
-            message(past, is_user=True, key=str(i) + '_user', avatar_style="big-smile")
+    if st.session_state['chatlogs']:
+        for i, log in reversed(list(enumerate(st.session_state['chatlogs']))):
+            is_user = (log['role'] == 'user')
+            avatar = 'big-smile' if is_user else 'bottts'
+            feed_back = message(log['content'], is_user=is_user, key=str(i), avatar_style=avatar)
+            if not is_user and feed_back != log['feed_back']:
+                log['feed_back'] = feed_back
+                write_log(log, i)
 
     message("Hello! How can I assist you today?", key='init_msg', avatar_style='bottts')
     message("Hello!", is_user=True, key='init_msg_user', avatar_style="big-smile")
