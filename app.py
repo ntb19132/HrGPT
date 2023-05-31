@@ -1,6 +1,7 @@
 import asyncio
 import time
 
+import requests
 import streamlit as st
 from components.streamlit_chat import message
 
@@ -9,31 +10,41 @@ from services.obs import write_log
 from services.openai import get_completion
 from utils import get_session_id
 
+RELEASE = st.secrets.get("RELEASE", True)
 
-async def generate_response(question, chat_logs):
-    user_timestamp = int(time.time())
-    prompt_gen = PromptGenerator()
-    docs = prompt_gen.retrieve(question)
-    prompt = prompt_gen.get_prompt(question, docs, chat_logs)
-    response = get_completion(prompt)
-    generated_content = response.choices[0].message['content']
+if RELEASE:
+    demo_endpoints = {"hrgpt": "https://hrgpt-api.onrender.com/chat/completions",
+                      "marketgpt": "https://marketgpt-api.onrender.com/chat/completions"}
+else:
+    demo_endpoints = {"hrgpt": "https://hrgpt-api.onrender.com/chat/completions",
+                      "marketgpt": "http://127.0.0.1:8000/chat/completions"}
+
+
+async def generate_response(demo, chat_logs):
+    usage = None
+    if demo == 'hrgpt':
+        payload = {"messages": chat_logs}
+        response = requests.post(demo_endpoints[demo], json=payload)
+        data = response.json()
+        generated_content = data['message']['content']
+        created = data['created']
+        usage = data['usage']
+    else:
+        payload = {"content": chat_logs[-1]['content']}
+        response = requests.post(demo_endpoints[demo], json=payload)
+        data = response.json()
+        generated_content = data['message']['content']
+        created = data['created']
+        usage = data['usage']
     # write session_id, created, role , content, docs
     session_id = get_session_id()
-    # session_id = 'asda'
-    usage = response.usage.to_dict()
-    usage['embedding_token'] = count_tokens(question)
-    doc_ids = [d['id'] for d in docs]
-    user_log = {'session_id': session_id, 'timestamp': user_timestamp, 'role': 'user', 'content': question,
-                'docs': doc_ids, 'usage': usage}
-    write_log(user_log, len(chat_logs))
-    assistant_log = {'session_id': session_id, 'timestamp': response['created'], 'role': 'assistant',
-                     'content': generated_content, 'feed_back': None}
-    write_log(assistant_log, len(chat_logs) + 1)
-    # st.session_state.past.append(st.session_state.input_text)
-    # st.session_state.generated.append(generated_content)
-    st.session_state.chatlogs.append(user_log)
+    # session_id = 'asd'
+    assistant_log = {'session_id': session_id, 'timestamp': created, 'role': 'assistant',
+                     'content': generated_content, 'usage': usage, 'feed_back': None, 'app': demo}
+    # print(assistant_log)
+    if RELEASE:
+        write_log(assistant_log, len(chat_logs) + 1)
     st.session_state.chatlogs.append(assistant_log)
-    # return generated_content
 
 
 # ----------------------- Frontend ---------------------------
@@ -57,11 +68,20 @@ def main():
     def submit():
         st.session_state.input_text = st.session_state.input
         st.session_state.input = ''
-        chatlogs = [{'role': log['role'], 'content': log['content']} for log in st.session_state['chatlogs']]
-        asyncio.run(generate_response(st.session_state.input_text, chatlogs))
+        user_log = {'session_id': get_session_id(), 'timestamp': int(time.time()), 'role': 'user',
+                    'content': st.session_state.input_text, 'app': st.session_state.demo}
+        st.session_state.chatlogs.append(user_log)
+        chat_logs = [{'role': log['role'], 'content': log['content']} for log in st.session_state['chatlogs']]
+        asyncio.run(generate_response(st.session_state.demo, chat_logs))
+        write_log(user_log, len(chat_logs))
         # store the output
 
-    st.text_input(
+    col1, col2 = st.columns([1, 3])
+    st.session_state.demo = col1.selectbox(
+        "pick demo",
+        ('hrgpt', 'marketgpt'))
+
+    col2.text_input(
         "Your Message", '', key="input", on_change=submit)
 
     if st.session_state['chatlogs']:

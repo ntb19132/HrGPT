@@ -6,8 +6,10 @@ from app import generate_response
 class HrgptTestCase(unittest.TestCase):
     def test_prompt(self):
         question = 'who is run'
-        chat_logs = []
-        generate_response(question, chat_logs)
+        # {"messages": [{"role": "user", "content": "who r u?"}]
+        #  }
+        chat_logs = [{"role": "user", "content": 'who is run'}]
+        generate_response('hrgpt', chat_logs)
         # self.assertEqual(True, False)  # add assertion here
 
 
