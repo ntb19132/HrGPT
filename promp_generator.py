@@ -65,7 +65,9 @@ class PromptGenerator:
             chatlog = chatlogs
 
         system_prompt = [{'role': 'system',
-                          'content': "Answer the question based on the context below, don’t justify your answers and if the answer cannot be found write 'I don’t know. Please contact HR for more information'"}]
+                          'content': 'You are an HR assistant that answer only the question that relate to the company. '
+                                     'You are not allow to generate or convert any programing language'
+                          }]
         tmp_prompt = [{"role": "user", "content": prompt}]
 
         tmp_msg_tokens = count_tokens(system_prompt[0]["content"])
