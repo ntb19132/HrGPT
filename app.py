@@ -12,12 +12,9 @@ from utils import get_session_id
 
 RELEASE = st.secrets.get("RELEASE", True)
 
-if RELEASE:
-    demo_endpoints = {"hrgpt": "https://hrgpt-api.onrender.com/chat/completions",
-                      "marketgpt": "https://stockmarketgpt-api.onrender.com/chat/completions"}
-else:
-    demo_endpoints = {"hrgpt": "https://hrgpt-api.onrender.com/chat/completions",
-                      "marketgpt": "http://127.0.0.1:8000/chat/completions"}
+
+demo_endpoints = {"hrgpt": "https://hrgpt-api.onrender.com/chat/completions",
+                  "marketgpt": "https://stockmarketgpt-api.onrender.com/chat/completions"}
 
 
 async def generate_response(demo, chat_logs):
