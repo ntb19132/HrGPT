@@ -65,8 +65,7 @@ class PromptGenerator:
             chatlog = chatlogs
 
         system_prompt = [{'role': 'system',
-                          'content': 'You are an HR assistant that answer only the question that relate to the company. '
-                                     'You also allow to generate or convert any programing language as you know'}]
+                          'content': "Answer the question based on the context below, don’t justify your answers and if the answer cannot be found write 'I don’t know. Please contact HR for more information'"}]
         tmp_prompt = [{"role": "user", "content": prompt}]
 
         tmp_msg_tokens = count_tokens(system_prompt[0]["content"])
@@ -77,6 +76,6 @@ class PromptGenerator:
         if tmp_msg_tokens + tmp_prompt_tokens + tmp_chat_log_tokens <= h_limit:
             messages = system_prompt + chatlog + tmp_prompt
             feed_tokens = tmp_msg_tokens + tmp_prompt_tokens + tmp_chat_log_tokens
-            print('Tokens Befor Feed :', feed_tokens)
+            print('Tokens Before Feed :', feed_tokens)
 
         return messages
