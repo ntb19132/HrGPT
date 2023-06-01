@@ -13,23 +13,34 @@ from utils import get_session_id
 RELEASE = st.secrets.get("RELEASE", True)
 
 if RELEASE:
-    demo_endpoints = {"hrgpt": "https://hrgpt-api.onrender.com/chat/completions",
-                      "marketgpt": "https://stockmarketgpt-api.onrender.com/chat/completions"}
+    demo_endpoints = {"hrgpt-api": "https://hrgpt-api.onrender.com/chat/completions",
+                      "marketgpt-api": "https://stockmarketgpt-api.onrender.com/chat/completions"}
 else:
-    demo_endpoints = {"hrgpt": "http://127.0.0.1:8000/chat/completions",
-                      "marketgpt": "http://127.0.0.1:7000/chat/completions"}
+    demo_endpoints = {"hrgpt-api": "http://127.0.0.1:8000/chat/completions",
+                      "marketgpt-api": "http://127.0.0.1:7000/chat/completions"}
 
 
 async def generate_response(demo, chat_logs):
     usage = None
     if demo == 'hrgpt':
+        question = chat_logs[-1]['content']
+        prompt_gen = PromptGenerator()
+        docs = prompt_gen.retrieve(question)
+        prompt = prompt_gen.get_prompt(question, docs, chat_logs[:-1])
+        response = get_completion(prompt)
+        generated_content = response.choices[0].message['content']
+        usage = response.usage.to_dict()
+        usage['embedding_token'] = count_tokens(question)
+        created = response.created
+        # doc_ids = [d['id'] for d in docs]
+    elif demo == 'hrgpt-api':
         payload = {"messages": chat_logs}
         response = requests.post(demo_endpoints[demo], json=payload)
         data = response.json()
         generated_content = data['message']['content']
         created = data['created']
         usage = data['usage']
-    else:
+    elif demo == 'marketgpt-api':
         payload = {"content": chat_logs[-1]['content']}
         response = requests.post(demo_endpoints[demo], json=payload)
         data = response.json()
@@ -79,7 +90,7 @@ def main():
     col1, col2 = st.columns([1, 3])
     st.session_state.demo = col1.selectbox(
         "pick demo",
-        ('hrgpt', 'marketgpt'))
+        ('hrgpt', 'hrgpt-api', 'marketgpt-api'))
 
     col2.text_input(
         "Your Message", '', key="input", on_change=submit)

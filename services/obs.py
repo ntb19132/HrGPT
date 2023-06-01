@@ -14,6 +14,7 @@ client_kwargs = {
 def write_log(log, order):
     file_dir = datetime.datetime.now().strftime('%Y-%m-%d')
     session_id = log['session_id']
+    s3_prefix = f"dev/{log['app'].replace('-','_')}_chat_logs"
     path = UPath(s3_bucket, s3_prefix, client_kwargs=client_kwargs)
     file_path = path.parent / (path.name + '/' + file_dir + '/' + session_id + '/' + str(order) + '.json')
     with file_path.open('wb') as file:
