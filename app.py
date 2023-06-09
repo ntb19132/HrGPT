@@ -19,7 +19,7 @@ if RELEASE:
 else:
     demo_endpoints = {"hrgpt-api": "http://127.0.0.1:8000/chat/completions",
                       "marketgpt-api": "http://127.0.0.1:7000/chat/completions",
-                      "pi-marketgpt-api": "http://127.0.0.1:6000/chat/completion"}
+                      "pi-marketgpt-api": "http://127.0.0.1:6000/chat/completions"}
 
 
 async def generate_response(demo, chat_logs):
