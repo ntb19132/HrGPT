@@ -4,5 +4,7 @@ streamlit-chat
 pinecone-client
 tiktoken
 universal_pathlib
+plotly
+pandas
 s3fs
 uuid
