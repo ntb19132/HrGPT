@@ -16,7 +16,7 @@ RELEASE = st.secrets.get("RELEASE", True)
 
 if RELEASE:
     demo_endpoints = {"hrgpt-api": "https://hrgpt-api.onrender.com/chat/completions",
-                      "marketgpt-api": "https://marketgpt-api-v1.onrender.com",
+                      "marketgpt-api": "https://marketgpt-api-v1.onrender.com/chat/completions",
                       # "marketgpt-api": "https://stockmarketgpt-api.onrender.com/chat/completions",
                       "pi-marketgpt-api": "https://pi-marketgpt-api.onrender.com/chat/completions"}
 else:
@@ -50,6 +50,7 @@ async def generate_response(demo, chat_logs):
         payload = {"content": chat_logs[-1]['content']}
         response = requests.post(demo_endpoints[demo], json=payload)
         data = response.json()
+        print(data)
         generated_content = data['message']['content']
         generated_visualization = data.get('visualization', None)
         created = data['created']
