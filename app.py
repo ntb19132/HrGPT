@@ -54,7 +54,7 @@ async def generate_response(demo, chat_logs):
         generated_content = data['message']['content']
         generated_visualization = data.get('visualization', None)
         created = data['created']
-        usage = data['usage']
+        usage = {}
     # write session_id, created, role , content, docs
     session_id = get_session_id()
     # session_id = 'asd'
