@@ -16,7 +16,8 @@ RELEASE = st.secrets.get("RELEASE", True)
 
 if RELEASE:
     demo_endpoints = {"hrgpt-api": "https://hrgpt-api.onrender.com/chat/completions",
-                      "marketgpt-api": "https://stockmarketgpt-api.onrender.com/chat/completions",
+                      "marketgpt-api": "https://marketgpt-api-v1.onrender.com",
+                      # "marketgpt-api": "https://stockmarketgpt-api.onrender.com/chat/completions",
                       "pi-marketgpt-api": "https://pi-marketgpt-api.onrender.com/chat/completions"}
 else:
     demo_endpoints = {"hrgpt-api": "http://127.0.0.1:8000/chat/completions",
