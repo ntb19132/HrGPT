@@ -70,8 +70,8 @@ async def generate_response(demo, chat_logs):
 # ----------------------- Frontend ---------------------------
 # Creating the chatbot interface
 def main():
-    st.title("HrGPT : Your HR Assistant")
-    st.subheader("Your can ask any information that relate to Sirius")
+    st.title("Chatbot demo")
+    st.subheader("Your can ask any information that relate to the demo")
     # Storing the chat
     if 'generated' not in st.session_state:
         st.session_state['generated'] = []
