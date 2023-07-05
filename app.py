@@ -99,7 +99,7 @@ def main():
     col1, col2 = st.columns([1, 3])
     st.session_state.demo = col1.selectbox(
         "pick demo",
-        ('hrgpt', 'hrgpt-api', 'marketgpt-api', 'pi-marketgpt-api'))
+        ('marketgpt-api', 'hrgpt', 'hrgpt-api', 'pi-marketgpt-api'))
 
     col2.text_input(
         "Your Message", '', key="input", on_change=submit)
