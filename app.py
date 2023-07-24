@@ -16,13 +16,13 @@ RELEASE = st.secrets.get("RELEASE", True)
 
 if RELEASE:
     demo_endpoints = {"hrgpt-api": "https://hrgpt-api.onrender.com/chat/completions",
-                      "marketgpt-api": "https://marketgpt-api-v1.onrender.com/chat/completions",
+                      "external-marketgpt-api": "https://marketgpt-api-v1.onrender.com/chat/completions",
                       # "marketgpt-api": "https://stockmarketgpt-api.onrender.com/chat/completions",
-                      "pi-marketgpt-api": "https://pi-marketgpt-api.onrender.com/chat/completions"}
+                      "internal-marketgpt-api": "https://pi-marketgpt-api.onrender.com/chat/completions"}
 else:
     demo_endpoints = {"hrgpt-api": "http://127.0.0.1:8000/chat/completions",
-                      "marketgpt-api": "http://127.0.0.1:7000/chat/completions",
-                      "pi-marketgpt-api": "http://127.0.0.1:8000/chat/completions"}
+                      "external-marketgpt-api": "http://127.0.0.1:7000/chat/completions",
+                      "internal-marketgpt-api": "http://127.0.0.1:8000/chat/completions"}
 
 
 async def generate_response(demo, chat_logs):
@@ -46,7 +46,7 @@ async def generate_response(demo, chat_logs):
         generated_content = data['message']['content']
         created = data['created']
         usage = data['usage']
-    elif demo == 'marketgpt-api' or demo == 'pi-marketgpt-api':
+    elif demo == 'internal-marketgpt-api' or demo == 'external-marketgpt-api':
         payload = {"content": chat_logs[-1]['content']}
         response = requests.post(demo_endpoints[demo], json=payload)
         data = response.json()
@@ -99,7 +99,7 @@ def main():
     col1, col2 = st.columns([1, 3])
     st.session_state.demo = col1.selectbox(
         "pick demo",
-        ('marketgpt-api', 'hrgpt', 'hrgpt-api', 'pi-marketgpt-api'))
+        ('external-marketgpt-api', 'hrgpt', 'hrgpt-api', 'internal-marketgpt-api'))
 
     col2.text_input(
         "Your Message", '', key="input", on_change=submit)
